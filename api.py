@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 # Load model once at startup
-model = YOLO("best.pt")
+model = YOLO("int-best-40ep.pt")
 
 # Response schema
 class DetectionResponse(BaseModel):
@@ -33,7 +33,11 @@ def read_image(file: UploadFile) -> np.ndarray:
     return np.array(image)
 
 def encode_image(img_array: np.ndarray) -> str:
-    _, buffer = cv2.imencode(".jpg", img_array)
+    print("Encoding image shape and type:", img_array.shape, img_array.dtype)
+    img_rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
+    success, buffer = cv2.imencode(".jpg", img_rgb)
+    if not success:
+        raise ValueError("Image encoding failed")
     base64_str = base64.b64encode(buffer).decode("utf-8")
     return f"data:image/jpeg;base64,{base64_str}"
 
@@ -41,7 +45,7 @@ def encode_image(img_array: np.ndarray) -> str:
 async def detect(file: UploadFile = File(...)):
     image = read_image(file)
 
-    results = model.predict(source=image, conf=0.5)
+    results = model.predict(source=image, conf=0.3)
     annotated = results[0].plot()
 
     # Get list of detected item names
